@@ -220,12 +220,12 @@ export function menuHTML({ actors, url, paired, isGM }) {
       <input type="text" name="url" value="${foundry.utils.escapeHTML(url)}">
       <p class="hint">${t("AddressHint")}</p>
     </div>
-    ${paired ? "" : `
     <div class="form-group">
       <label>${t("Code")}</label>
-      <input type="text" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6">
+      <input type="text" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6"
+             placeholder="${paired ? t("CodeNotNeeded") : ""}">
       <p class="hint">${t("CodeHint")}</p>
-    </div>`}
+    </div>
     <fieldset>
       <legend>${t("Preview")}</legend>
       <p>AC ${show(s.actor.derived.ac)} ·
