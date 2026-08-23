@@ -129,7 +129,19 @@ export function snapshot(actor) {
        * reuses the importer it already has for feats, spells and gear, and only
        * overlays the values an export cannot carry. One code path, not two.
        */
-      source: actor.toObject(),
+      source: {
+        ...actor.toObject(),
+        /**
+         * Items expanded explicitly.
+         *
+         * `actor.toObject()` serialises the embedded item collection as an
+         * array of **ids**, not objects — measured against a real v14 world,
+         * where every character arrived with `items: ["abc123", …]` and the
+         * importer rejected all of them. Mapping the collection is the only
+         * form that carries the feats, spells and gear.
+         */
+        items: actor.items.map((i) => i.toObject()),
+      },
     },
   };
 }

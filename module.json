@@ -2,7 +2,7 @@
   "id": "sinergo-bridge",
   "title": "Sinergo Bridge",
   "description": "Send your own Pathfinder 2e character from Foundry to the Sinergo companion app. Each player pairs their own copy; you can only send characters you own.",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "compatibility": {
     "minimum": "13",
     "verified": "14",
@@ -37,5 +37,5 @@
   },
   "url": "https://github.com/mvolgyi/sinergo-bridge",
   "manifest": "https://github.com/mvolgyi/sinergo-bridge/releases/latest/download/module.json",
-  "download": "https://github.com/mvolgyi/sinergo-bridge/releases/download/v0.1.3/sinergo-bridge.zip"
+  "download": "https://github.com/mvolgyi/sinergo-bridge/releases/download/v0.1.4/sinergo-bridge.zip"
 }
