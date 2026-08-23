@@ -16,7 +16,8 @@
   "SINERGO.ErrUnreachable": "Could not reach Sinergo at {url}. Is the app open with Foundry sync switched on, and on the same network?",
   "SINERGO.ErrMixed": "Foundry is served over HTTPS, so the browser blocks a plain http:// request to another machine. If Sinergo is running on this computer, use its 127.0.0.1 address — that one is allowed. Otherwise use Copy and paste into Sinergo.",
   "SINERGO.ErrPair": "Sinergo rejected the pairing code.",
-  "SINERGO.ErrAuth": "Sinergo rejected this connection. Pair again to get a fresh token.",
+  "SINERGO.ErrAuth": "Sinergo rejected this connection — its token changed. Reopen this window: the pairing code box is back, and Sinergo is showing a fresh code under Foundry.",
+  "SINERGO.ErrNotPaired": "Not paired yet. In Sinergo open Foundry, press Pair a server, and type the six-digit code here.",
   "SINERGO.Copy": "Copy instead",
   "SINERGO.Copied": "Character JSON copied. Paste it into Sinergo → Import.",
   "SINERGO.Preview": "What will be sent"

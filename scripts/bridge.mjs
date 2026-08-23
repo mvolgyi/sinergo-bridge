@@ -145,7 +145,7 @@ function isLoopback(url) {
 }
 
 /** One place that talks to the app, so the error copy is consistent. */
-async function post(path, body, { auth = true } = {}) {
+export async function post(path, body, { auth = true } = {}) {
   const url = game.settings.get(ID, "url").replace(/\/+$/, "");
 
   // A page served over HTTPS cannot make a plain-HTTP request — *except* to
@@ -163,7 +163,7 @@ async function post(path, body, { auth = true } = {}) {
   const headers = { "Content-Type": "application/json" };
   if (auth) {
     const token = game.settings.get(ID, "token");
-    if (!token) throw new Error(t("ErrAuth"));
+    if (!token) throw new Error(t("ErrNotPaired"));
     headers.Authorization = `Bearer ${token}`;
   }
 
@@ -175,7 +175,13 @@ async function post(path, body, { auth = true } = {}) {
     // only thing that distinguishes a wrong port from a firewall in a log.
     throw new Error(t("ErrUnreachable", { url }), { cause: e });
   }
-  if (res.status === 401 || res.status === 403) throw new Error(t("ErrAuth"));
+  if (res.status === 401 || res.status === 403) {
+    // Drop the dead token. The dialog hides the code field whenever one is
+    // stored, so keeping a rejected token leaves no way to pair again — the
+    // error told you to do the one thing the screen no longer offered.
+    await game.settings.set(ID, "token", "");
+    throw new Error(t("ErrAuth"));
+  }
   if (!res.ok) throw new Error(`Sinergo replied ${res.status}: ${await res.text()}`);
   return res.json();
 }
@@ -295,3 +301,6 @@ class SinergoMenu extends foundry.applications.api.ApplicationV2 {
     }
   }
 }
+
+/** Exported under a second name so tests can drive the transport directly. */
+export const postForTest = post;
