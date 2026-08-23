@@ -1,0 +1,23 @@
+{
+  "SINERGO.MenuName": "Sinergo companion",
+  "SINERGO.MenuLabel": "Pair and send",
+  "SINERGO.MenuHint": "Connect this browser to your own copy of the Sinergo app and send a character to it.",
+  "SINERGO.DialogTitle": "Send to Sinergo",
+  "SINERGO.Address": "Sinergo address",
+  "SINERGO.AddressHint": "Shown in Sinergo under Settings → Foundry sync.",
+  "SINERGO.Code": "Pairing code",
+  "SINERGO.CodeHint": "Six digits, shown by Sinergo while pairing is open. Only needed once.",
+  "SINERGO.Character": "Character",
+  "SINERGO.Send": "Send",
+  "SINERGO.Paired": "Paired with Sinergo.",
+  "SINERGO.Sent": "Sent {name} to Sinergo.",
+  "SINERGO.NoCharacters": "You do not own any characters in this world, so there is nothing to send.",
+  "SINERGO.GMNotice": "You are the GM, so Foundry counts you as the owner of every character. Players only ever see their own.",
+  "SINERGO.ErrUnreachable": "Could not reach Sinergo at {url}. Is the app open with Foundry sync switched on, and on the same network?",
+  "SINERGO.ErrMixed": "Foundry is served over HTTPS, so the browser blocks a plain http:// request to another machine. If Sinergo is running on this computer, use its 127.0.0.1 address — that one is allowed. Otherwise use Copy and paste into Sinergo.",
+  "SINERGO.ErrPair": "Sinergo rejected the pairing code.",
+  "SINERGO.ErrAuth": "Sinergo rejected this connection. Pair again to get a fresh token.",
+  "SINERGO.Copy": "Copy instead",
+  "SINERGO.Copied": "Character JSON copied. Paste it into Sinergo → Import.",
+  "SINERGO.Preview": "What will be sent"
+}
