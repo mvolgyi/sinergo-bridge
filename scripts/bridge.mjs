@@ -54,7 +54,7 @@ Hooks.once("init", () => {
  * `isOwner` is true for every actor when you are the GM — that is Foundry's own
  * model, not something to quietly override, so the dialog says so instead.
  */
-function ownedCharacters() {
+export function ownedCharacters() {
   return game.actors.filter((a) => a.type === "character" && a.isOwner);
 }
 
@@ -74,7 +74,7 @@ const num = (v) => (typeof v === "number" && Number.isFinite(v) ? v : null);
  * exists — an actor *export* carries unevaluated rule elements and a +2 from a
  * potion simply is not in it.
  */
-function snapshot(actor) {
+export function snapshot(actor) {
   const sys = actor.system ?? {};
   const stat = (s) => (s ? { total: num(s.mod), rank: num(s.rank) } : null);
 
@@ -180,6 +180,59 @@ async function post(path, body, { auth = true } = {}) {
   return res.json();
 }
 
+/**
+ * The dialog's markup, as a function of its inputs.
+ *
+ * Outside the class so it can be run without Foundry. ApplicationV2 removes the
+ * window and rethrows when `_renderHTML` fails, and the settings screen does not
+ * catch it — so a throw in here shows the player *nothing at all*, with the
+ * reason only in the browser console. That happened, and it is why this is
+ * testable now.
+ */
+export function menuHTML({ actors, url, paired, isGM }) {
+  if (!actors.length) {
+    return `<p class="notification warning">${t("NoCharacters")}</p>`;
+  }
+
+  const options = actors
+    .map((a) => `<option value="${a.id}">${foundry.utils.escapeHTML(a.name)}</option>`)
+    .join("");
+
+  // Shown before sending, so a derived value we failed to read is visible
+  // here as an em dash rather than arriving in Sinergo as a silent gap.
+  const s = snapshot(actors[0]);
+  const show = (v) => (v === null ? "—" : v);
+
+  return `
+    ${isGM ? `<p class="notification info">${t("GMNotice")}</p>` : ""}
+    <div class="form-group">
+      <label>${t("Character")}</label>
+      <select name="actorId">${options}</select>
+    </div>
+    <div class="form-group">
+      <label>${t("Address")}</label>
+      <input type="text" name="url" value="${foundry.utils.escapeHTML(url)}">
+      <p class="hint">${t("AddressHint")}</p>
+    </div>
+    ${paired ? "" : `
+    <div class="form-group">
+      <label>${t("Code")}</label>
+      <input type="text" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6">
+      <p class="hint">${t("CodeHint")}</p>
+    </div>`}
+    <fieldset>
+      <legend>${t("Preview")}</legend>
+      <p>AC ${show(s.actor.derived.ac)} ·
+         Perception ${show(s.actor.derived.perception)} ·
+         ${s.actor.derived.strikes.length} strikes ·
+         ${s.actor.source.items?.length ?? 0} items</p>
+    </fieldset>
+    <footer class="form-footer">
+      <button type="button" data-action="copy">${t("Copy")}</button>
+      <button type="submit">${t("Send")}</button>
+    </footer>`;
+  }
+
 class SinergoMenu extends foundry.applications.api.ApplicationV2 {
   static DEFAULT_OPTIONS = {
     id: "sinergo-bridge-menu",
@@ -191,51 +244,12 @@ class SinergoMenu extends foundry.applications.api.ApplicationV2 {
   };
 
   async _renderHTML() {
-    const actors = ownedCharacters();
-    const url = game.settings.get(ID, "url");
-    const paired = Boolean(game.settings.get(ID, "token"));
-
-    if (!actors.length) {
-      return `<p class="notification warning">${t("NoCharacters")}</p>`;
-    }
-
-    const options = actors
-      .map((a) => `<option value="${a.id}">${foundry.utils.escapeHTML(a.name)}</option>`)
-      .join("");
-
-    // Shown before sending, so a derived value we failed to read is visible
-    // here as an em dash rather than arriving in Sinergo as a silent gap.
-    const s = snapshot(actors[0]);
-    const show = (v) => (v === null ? "—" : v);
-
-    return `
-      ${game.user.isGM ? `<p class="notification info">${t("GMNotice")}</p>` : ""}
-      <div class="form-group">
-        <label>${t("Character")}</label>
-        <select name="actorId">${options}</select>
-      </div>
-      <div class="form-group">
-        <label>${t("Address")}</label>
-        <input type="text" name="url" value="${foundry.utils.escapeHTML(url)}">
-        <p class="hint">${t("AddressHint")}</p>
-      </div>
-      ${paired ? "" : `
-      <div class="form-group">
-        <label>${t("Code")}</label>
-        <input type="text" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6">
-        <p class="hint">${t("CodeHint")}</p>
-      </div>`}
-      <fieldset>
-        <legend>${t("Preview")}</legend>
-        <p>AC ${show(s.actor.derived.ac)} ·
-           Perception ${show(s.actor.derived.perception)} ·
-           ${s.actor.derived.strikes.length} strikes ·
-           ${s.actor.items.length} items</p>
-      </fieldset>
-      <footer class="form-footer">
-        <button type="button" data-action="copy">${t("Copy")}</button>
-        <button type="submit">${t("Send")}</button>
-      </footer>`;
+    return menuHTML({
+      actors: ownedCharacters(),
+      url: game.settings.get(ID, "url"),
+      paired: Boolean(game.settings.get(ID, "token")),
+      isGM: game.user.isGM,
+    });
   }
 
   _replaceHTML(result, content) {
