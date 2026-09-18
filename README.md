@@ -1,9 +1,12 @@
 # Sinergo Bridge
 
-Sends **your own** Pathfinder 2e character from Foundry VTT to the
-[Sinergo](https://github.com/mvolgyi/sinergo) companion app.
+Connects a Pathfinder 2e world in Foundry VTT to a campaign in
+[Sinergo](https://github.com/mvolgyi/sinergo). The GM connects once with a code; the
+party's characters stay in sync, each player sees in Sinergo what Foundry lets
+them see, and downtime rewards the GM approves in Sinergo land on the
+characters.
 
-## Install
+## Install (GM)
 
 Foundry → **Add-on Modules** → **Install Module**, and paste:
 
@@ -11,55 +14,45 @@ Foundry → **Add-on Modules** → **Install Module**, and paste:
 https://github.com/mvolgyi/sinergo-bridge/releases/latest/download/module.json
 ```
 
-Then enable it in your world. Needs the Pathfinder 2e system, Foundry v13 or v14.
+Enable it in your world. Needs the Pathfinder 2e system, Foundry v13 or v14.
 
-## Use it
+## Connect (GM)
 
-**Game Settings → Configure Settings → Sinergo companion → Pair and send.**
+One world, one campaign.
 
-Pick your character, check the preview line — `AC 26 · Perception 17 · 5 strikes`
-— and press **Send**. Anything showing a dash there will be missing in Sinergo
-too, and it is better to find that out here.
+1. In Foundry, make sure the player characters are in the **Party** (Actors
+   sidebar) and each player is Owner of their character.
+2. **Game Settings → Configure Settings → Sinergo → Connect campaign → Get a
+   connection code.** The dialog shows an 8-character code and the party
+   members it will sync.
+3. In Sinergo, open the campaign → **Manage → Foundry** and type the code. The
+   dialog in Foundry says it is connected and syncs the party.
 
-**Copy instead** puts the same data on the clipboard for pasting into Sinergo's
-import screen. Use it when a direct send cannot work.
+From then on, while you have Foundry open, changes to party members — hit
+points, conditions, items, permissions — go to Sinergo on their own. Players do
+nothing in Foundry.
 
-### Which address to use
+## Downtime rewards
 
-Sinergo shows two. Which one works depends on where it is running, not on which
-looks more correct:
+When you press **Apply in Foundry** on a downtime result in Sinergo, the module
+— in your browser, while Foundry is open — adds the gold and items, takes the hit
+points, applies the conditions, and posts a chat card. It checks everything
+first; if something is missing (an item, enough gold) it changes nothing and
+Sinergo shows why. The same result is never applied twice.
 
-- **Sinergo on the same computer as this browser** — use the `127.0.0.1` one.
-  This works even when Foundry is hosted and served over HTTPS, because browsers
-  treat your own machine as trustworthy.
-- **Sinergo on another device**, a phone say — use the other address. If Foundry
-  is on HTTPS the browser will block it as mixed content; use **Copy instead**.
+## What players see
 
-## Why this exists
+What their Foundry user can see: every party member's party card (the same
+overview pf2e's party sheet shows), the full sheet of characters they own or
+observe, and wealth when the world's "Show Party Stats" is on.
 
-A Foundry actor *export* is missing everything that matters. Foundry stores
-`system.abilities: null`, `system.skills: {}` and no maximum hit points — the
-Pathfinder system works all of it out at load time from your class, your items
-and their rule elements. So a file import can never show a trustworthy armour
-class, and Sinergo renders one as an em dash rather than a guess.
+## What it sends
 
-This module runs *inside* that runtime and reads the evaluated numbers. The
-bonus from your armour rune and the penalty from the condition you are under are
-both already applied.
-
-## What it can reach
-
-Only characters **you own**. The module runs in your own authenticated Foundry
-session, so it can only see documents Foundry already handed your browser, and
-it checks ownership again at the moment you press Send.
-
-If you are the **GM**, Foundry counts you as the owner of every actor, so you
-will see them all. That is Foundry's own ownership model; the dialog says so
-rather than pretending otherwise.
-
-Your pairing token is stored at `client` scope — localStorage in that one
-browser. It is deliberately not world or user scope, which would put it in the
-world database where the GM could read every player's token.
+The world's users (id, name, GM or not), the pf2e parties and their members,
+and each party member's character: the values Foundry computed, its items, and
+its permissions. Nothing outside a party is sent. The module makes its sync
+token itself and stores it in the GM's browser only; Sinergo only ever receives
+its hash while connecting.
 
 ## Licence
 
