@@ -280,6 +280,7 @@ export function live(actor) {
         slug: c.slug ?? null,
         name: c.name ?? null,
         value: num(c.value),
+        img: absoluteUrl(c.img),
       })),
     },
   };
@@ -344,6 +345,50 @@ export function worldUpdate() {
   });
 }
 
+/**
+ * The character's portrait, small enough to keep: a webp of at most 512 px.
+ *
+ * Art inside a world (`worlds/<id>/…`) is served by the Foundry server, which
+ * is asleep between sessions — exactly when players look at Sinergo. This
+ * browser is logged in to Foundry, so it can read the file; Sinergo keeps the
+ * copy and the card has a face with Foundry off. A CDN image that refuses
+ * cross-origin reads stays a URL, which is fine: a CDN is always up.
+ */
+const portraits = new Map();
+
+export async function portrait(url, { maxSize = 512, quality = 0.82, limit = 300_000 } = {}) {
+  if (!url) return null;
+  if (portraits.has(url)) return portraits.get(url);
+  let data = null;
+  try {
+    const res = await fetch(url, { credentials: "same-origin" });
+    if (!res.ok) throw new Error(`Sinergo: portrait ${res.status}`);
+    const bitmap = await createImageBitmap(await res.blob());
+    const scale = Math.min(1, maxSize / Math.max(bitmap.width, bitmap.height));
+    const width = Math.max(1, Math.round(bitmap.width * scale));
+    const height = Math.max(1, Math.round(bitmap.height * scale));
+    const canvas = new OffscreenCanvas(width, height);
+    canvas.getContext("2d").drawImage(bitmap, 0, 0, width, height);
+    const blob = await canvas.convertToBlob({ type: "image/webp", quality });
+    data = blob.size * 1.4 > limit ? null : await blobToDataUrl(blob);
+    if (data && data.length > limit) data = null;
+  } catch {
+    // Unreadable (cross-origin, gone, an old browser): the URL still stands.
+    data = null;
+  }
+  portraits.set(url, data);
+  return data;
+}
+
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}
+
 /** The whole character: live values, wealth, permissions, and the actor. */
 export function snapshot(actor) {
   return envelope({
@@ -361,8 +406,16 @@ export function snapshot(actor) {
         /**
          * Items expanded explicitly. `actor.toObject()` serialises the embedded
          * collection as ids, not objects — measured against a real v14 world.
+         *
+         * Each icon becomes a URL Sinergo can load. A world's paths are
+         * relative to the Foundry that serves them ("systems/pf2e/icons/…"),
+         * which means nothing in a browser pointed at Sinergo; a hosted world
+         * already carries absolute ones, and those are left alone.
          */
-        items: actor.items.map((i) => i.toObject()),
+        items: actor.items.map((i) => {
+          const item = i.toObject();
+          return { ...item, img: absoluteUrl(item.img) ?? item.img ?? null };
+        }),
       },
     },
   });
@@ -477,7 +530,9 @@ export async function sendState(actor) {
 
 export async function sendFull(actor) {
   try {
-    await post("/actor", snapshot(actor));
+    const body = snapshot(actor);
+    body.actor.portrait = await portrait(body.actor.img);
+    await post("/actor", body);
     lastWarned = null;
     return true;
   } catch (e) {
