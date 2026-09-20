@@ -205,15 +205,47 @@ const inParty = (actor) =>
  * speeds are `system.movement.speeds.<type>.value`, and senses are
  * `actor.perception.senses`, a Collection of Sense with `type` and `label`.
  */
-export function live(actor) {
+/**
+ * A strike's damage, the way pf2e's own sheet gets it.
+ *
+ * "1d6+3 piercing" is not the weapon's `system.damage` — runes add dice,
+ * the ability modifier adds to the total, and rule elements add more. The only
+ * honest source is the strike's own `damage({ getFormula: true })`, which is
+ * async and is why `live()` is. A weapon that deals no damage, or an error
+ * inside someone's rule element, gives null rather than a guess (ADR-0003).
+ */
+async function damageFormula(strike) {
+  if (!strike?.item?.dealsDamage || typeof strike.damage !== "function") return null;
+  try {
+    const formula = await strike.damage({ getFormula: true });
+    return typeof formula === "string" && formula.trim() ? formula : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function live(actor) {
   const sys = actor.system ?? {};
   const attrs = actor.attributes ?? sys.attributes ?? {};
   const stat = (s) => (s ? { total: num(s.mod), rank: num(s.rank) } : null);
   const shield = attrs.shield;
 
+  /*
+   * `actor.inventory.bulk` is pf2e's own InventoryBulk: `value` is a Bulk
+   * object whose `.value` is the decimal total (4.6), `encumberedAfter` is
+   * 5 + Str and `max` is 10 + Str. Summing item bulk in the web app would get
+   * containers and the light-bulk rule wrong, so the weighing stays here.
+   */
+  const bulk = actor.inventory?.bulk;
+
   return {
     derived: {
       ac: num(actor.armorClass?.value ?? sys.attributes?.ac?.value),
+      bulk: {
+        value: num(bulk?.value?.value),
+        encumberedAfter: num(bulk?.encumberedAfter),
+        max: num(bulk?.max),
+      },
       perception: stat(actor.perception),
       classDC: num(actor.classDC?.dc?.value),
       speed: num(sys.movement?.speeds?.land?.value),
@@ -235,15 +267,18 @@ export function live(actor) {
       skills: Object.fromEntries(
         Object.entries(actor.skills ?? {}).map(([k, s]) => [k, { ...stat(s), label: s?.label ?? null }]),
       ),
-      strikes: (sys.actions ?? []).map((s) => ({
-        slug: s.slug ?? null,
-        label: s.label ?? null,
-        itemId: s.item?.id ?? null,
-        bonus: num(s.totalModifier),
-        // The multiple-attack-penalty ladder exactly as the sheet shows it.
-        variants: (s.variants ?? []).map((v) => v?.label ?? null).filter(Boolean),
-        traits: (s.traits ?? []).map((x) => x?.name ?? x?.value ?? x).filter(Boolean),
-      })),
+      strikes: await Promise.all(
+        (sys.actions ?? []).map(async (s) => ({
+          slug: s.slug ?? null,
+          label: s.label ?? null,
+          itemId: s.item?.id ?? null,
+          bonus: num(s.totalModifier),
+          // The multiple-attack-penalty ladder exactly as the sheet shows it.
+          variants: (s.variants ?? []).map((v) => v?.label ?? null).filter(Boolean),
+          damage: await damageFormula(s),
+          traits: (s.traits ?? []).map((x) => x?.name ?? x?.value ?? x).filter(Boolean),
+        })),
+      ),
       spellcasting: (actor.spellcasting?.contents ?? [])
         .filter((e) => e?.statistic)
         .map((e) => ({
@@ -272,6 +307,8 @@ export function live(actor) {
             ac: num(shield.ac),
             hardness: num(shield.hardness),
             hp: { value: num(shield.hp?.value), max: num(shield.hp?.max) },
+            // Half the maximum, but pf2e's half, not ours.
+            brokenThreshold: num(shield.brokenThreshold ?? shield.hp?.brokenThreshold),
             raised: Boolean(shield.raised),
             broken: Boolean(shield.broken),
           }
@@ -390,7 +427,7 @@ function blobToDataUrl(blob) {
 }
 
 /** The whole character: live values, wealth, permissions, and the actor. */
-export function snapshot(actor) {
+export async function snapshot(actor) {
   return envelope({
     actor: {
       uuid: actor.uuid,
@@ -400,7 +437,7 @@ export function snapshot(actor) {
       ownership: ownership(actor),
       parties: partyUuids(actor),
       wealth: wealth(actor),
-      ...live(actor),
+      ...(await live(actor)),
       source: {
         ...actor.toObject(),
         /**
@@ -422,8 +459,8 @@ export function snapshot(actor) {
 }
 
 /** Only what moves in play. Small, because it is sent on every HP change. */
-export function stateUpdate(actor) {
-  return envelope({ actor: { uuid: actor.uuid, ownership: ownership(actor), ...live(actor) } });
+export async function stateUpdate(actor) {
+  return envelope({ actor: { uuid: actor.uuid, ownership: ownership(actor), ...(await live(actor)) } });
 }
 
 /** Loopback, in the forms a person actually types. */
@@ -519,7 +556,7 @@ export async function sendWorld() {
 
 export async function sendState(actor) {
   try {
-    await post("/state", stateUpdate(actor));
+    await post("/state", await stateUpdate(actor));
     lastWarned = null;
   } catch (e) {
     // Sinergo has never seen this character: send all of it instead.
@@ -530,7 +567,7 @@ export async function sendState(actor) {
 
 export async function sendFull(actor) {
   try {
-    const body = snapshot(actor);
+    const body = await snapshot(actor);
     body.actor.portrait = await portrait(body.actor.img);
     await post("/actor", body);
     lastWarned = null;
@@ -830,8 +867,12 @@ export function menuHTML({ partyList, characters, url, defaultUrl = "", hasToken
   const members = characters.length
     ? `<ul class="sinergo-members">${characters
         .map((a) => {
-          const s = live(a);
-          return `<li>${esc(a.name)} — AC ${show(s.derived.ac)} · HP ${show(s.state.hp.value)}/${show(s.state.hp.max)}</li>`;
+          // Read straight off the actor rather than through `live()`, which is
+          // async now that it asks pf2e for damage formulas. This menu must stay
+          // synchronous: a throw in here shows the GM nothing at all.
+          const ac = num(a.armorClass?.value ?? a.system?.attributes?.ac?.value);
+          const hp = a.system?.attributes?.hp ?? {};
+          return `<li>${esc(a.name)} — AC ${show(ac)} · HP ${show(num(hp.value))}/${show(num(hp.max))}</li>`;
         })
         .join("")}</ul>`
     : `<p class="notification warning">${t("NoPartyMembers")}</p>`;
