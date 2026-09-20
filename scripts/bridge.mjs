@@ -451,7 +451,36 @@ export async function snapshot(actor) {
          */
         items: actor.items.map((i) => {
           const item = i.toObject();
-          return { ...item, img: absoluteUrl(item.img) ?? item.img ?? null };
+          return {
+            ...item,
+            img: absoluteUrl(item.img) ?? item.img ?? null,
+            /*
+             * Two answers the source object cannot carry, both pf2e's own.
+             *
+             * `usage` is stored raw and prepared into `{ type, where }` — every
+             * suit of armour stores `null` and prepares to
+             * `{ value: 'wornarmor', type: 'worn', where: 'armor' }`, measured
+             * across the eight real ones. Reading only the source loses the
+             * slot for the most important item on the sheet.
+             *
+             * `isEquipped` is pf2e's rule for "is this actually in use", and it
+             * is not one Sinergo should reimplement: worn with a named place
+             * needs `inSlot`, worn without one does not, and `carried` is
+             * always true. Two of the eight are wearing no armour by that rule,
+             * whatever their `carryType` says.
+             */
+            derived: {
+              equipped: i.isEquipped === true,
+              usage: i.system?.usage
+                ? {
+                    value: i.system.usage.value ?? null,
+                    type: i.system.usage.type ?? null,
+                    where: i.system.usage.where ?? null,
+                    hands: num(i.system.usage.hands),
+                  }
+                : null,
+            },
+          };
         }),
       },
     },
