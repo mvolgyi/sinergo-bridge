@@ -2,7 +2,7 @@
   "id": "sinergo-bridge",
   "title": "Sinergo Bridge",
   "description": "Connect a Pathfinder 2e world to its Sinergo campaign with a code. Party members' characters stay in sync, each player sees in Sinergo what Foundry lets them see, and downtime rewards the GM approves are applied to the characters.",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "compatibility": {
     "minimum": "13",
     "verified": "14",
@@ -37,10 +37,10 @@
   },
   "url": "https://github.com/mvolgyi/sinergo-bridge",
   "manifest": "https://github.com/mvolgyi/sinergo-bridge/releases/latest/download/module.json",
-  "download": "https://github.com/mvolgyi/sinergo-bridge/releases/download/v0.6.0/sinergo-bridge.zip",
+  "download": "https://github.com/mvolgyi/sinergo-bridge/releases/download/v0.6.1/sinergo-bridge.zip",
   "flags": {
     "sinergo": {
-      "server": ""
+      "server": "https://xwzpppbfroudxuyseqvo.supabase.co/functions/v1/bridge"
     }
   }
 }
